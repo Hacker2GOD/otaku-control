@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>OTAKU CONTROL</title>
+<style>
+:root{--bg:#0b0714;--card:#150e26;--card2:#1c1233;--purple:#8b3dff;--magenta:#ff3dcb;--text:#f2eeff;--muted:#9a8fbf;--ok:#6bffb0;--bad:#ff6b8a;--line:#2a1f47}
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(900px 500px at 10% -10%,#2a1260 0,transparent 60%),radial-gradient(700px 500px at 100% 100%,#4a1a5e 0,transparent 55%),var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;min-height:100vh}
+h1,h2,h3{margin:0}
+.logo{font-weight:900;font-style:italic;font-size:24px;letter-spacing:.5px}
+.logo b{background:linear-gradient(90deg,var(--purple),var(--magenta));-webkit-background-clip:text;background-clip:text;color:transparent}
+.center{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+.box{width:100%;max-width:420px;background:var(--card);border:1px solid var(--line);border-radius:20px;padding:26px;box-shadow:0 0 40px #8b3dff22}
+.box h2{margin:14px 0 6px;font-size:19px}
+.muted{color:var(--muted);font-size:13.5px;line-height:1.45}
+input,select,textarea{width:100%;background:var(--card2);border:1px solid var(--line);border-radius:12px;color:var(--text);padding:12px 14px;font-size:15px;margin-top:10px}
+input:focus,select:focus{outline:2px solid #8b3dff88}
+button{border:0;border-radius:12px;padding:11px 16px;font-size:14.5px;font-weight:700;color:#fff;background:linear-gradient(135deg,var(--purple),var(--magenta));cursor:pointer}
+button.ghost{background:var(--card2);border:1px solid var(--line);color:var(--text)}
+button.bad{background:#7a1b34}
+button.small{padding:7px 11px;font-size:12.5px;border-radius:10px}
+button:disabled{opacity:.5;cursor:default}
+.full{width:100%;margin-top:14px}
+.err{color:var(--bad);font-size:13.5px;margin-top:10px;min-height:18px}
+.ok{color:var(--ok);font-size:13.5px;margin-top:10px}
+header{display:flex;align-items:center;gap:12px;padding:14px 18px;border-bottom:1px solid var(--line);background:#0b0714cc;backdrop-filter:blur(8px);position:sticky;top:0;z-index:5;flex-wrap:wrap}
+header .sp{flex:1}
+.badge{background:var(--purple);border-radius:10px;padding:3px 10px;font-size:12px;font-weight:700}
+nav{display:flex;gap:8px;padding:12px 18px;flex-wrap:wrap}
+nav button{background:var(--card);border:1px solid var(--line)}
+nav button.on{background:linear-gradient(135deg,var(--purple),var(--magenta));border-color:transparent}
+main{padding:6px 18px 40px;max-width:1100px;margin:0 auto}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px}
+.stat .n{font-size:28px;font-weight:800}
+.stat .l{color:var(--muted);font-size:12.5px;margin-top:2px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin:12px 0}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.row.sp{justify-content:space-between}
+.tag{display:inline-block;border-radius:8px;padding:2px 9px;font-size:12px;font-weight:700;background:var(--card2);border:1px solid var(--line)}
+.tag.open{color:#ffd36b}.tag.resolved,.tag.active{color:var(--ok)}.tag.dismissed{color:var(--muted)}.tag.suspended{color:#ffb86b}.tag.banned{color:var(--bad)}.tag.reviewing{color:#6bb8ff}
+.quote{background:var(--card2);border-left:3px solid var(--purple);border-radius:8px;padding:10px 12px;margin:10px 0;white-space:pre-wrap;word-break:break-word}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th,td{text-align:left;padding:9px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--muted);font-weight:600;font-size:12px}
+.tablewrap{overflow-x:auto;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:6px 10px}
+img.qr{width:200px;height:200px;background:#fff;border-radius:12px;padding:8px;display:block;margin:12px auto}
+code{background:var(--card2);padding:2px 6px;border-radius:6px;word-break:break-all}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.0/dist/umd/supabase.min.js"></script>
+<script>
+'use strict';
+const SUPABASE_URL = 'https://rgisxyzexavvljoyoyxc.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_qHj9oh6IHy2M7G6ilPI-kQ_RrG4Sbc_'; // clé PUBLIQUE : jamais de clé secrète ici
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const root = document.getElementById('root');
+const state = { factorId: null, role: null, tab: 'dash' };
+
+// ---------- petits outils (jamais d'innerHTML avec des données d'utilisateurs) ----------
+function h(tag, props, ...kids) {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(props || {})) {
+    if (v === false || v == null) continue;
+    if (k === 'class') e.className = v;
+    else if (k.startsWith('on')) e.addEventListener(k.slice(2), v);
+    else e.setAttribute(k, v);
+  }
+  for (const c of kids.flat()) {
+    if (c === null || c === undefined || c === false) continue;
+    e.append(c instanceof Node ? c : document.createTextNode(String(c)));
+  }
+  return e;
+}
+function mount(...nodes) { root.replaceChildren(...nodes); }
+function logo() { return h('div', { class: 'logo' }, 'OTAKU ', h('b', {}, 'CONTROL')); }
+function fmt(d) { return d ? new Date(d).toLocaleString('fr-FR') : ''; }
+async function rpc(name, args) {
+  const { data, error } = await sb.rpc(name, args || {});
+  if (error) throw new Error(error.message || error.code || 'Erreur');
+  return data;
+}
+const REASONS = { spam: 'Spam', harassment: 'Harcèlement', hate: 'Haine ou discrimination', nudity: 'Nudité', violence: 'Violence', illegal: 'Contenu illégal', other: 'Autre' };
+const STATUS_FR = { open: 'ouvert', reviewing: 'en cours', resolved: 'résolu', dismissed: 'sans suite', active: 'actif', suspended: 'suspendu', banned: 'banni' };
+function tag(s) { return h('span', { class: 'tag ' + s }, STATUS_FR[s] || s); }
+
+// ---------- déconnexion automatique après 15 minutes sans action ----------
+let idleTimer = null;
+function resetIdle() {
+  clearTimeout(idleTimer);
+  idleTimer = setTimeout(async () => { await sb.auth.signOut(); location.reload(); }, 15 * 60 * 1000);
+}
+['click', 'keydown', 'mousemove', 'touchstart'].forEach(ev => window.addEventListener(ev, resetIdle, { passive: true }));
+
+// ---------- connexion ----------
+function loginView(msg) {
+  const email = h('input', { type: 'email', placeholder: 'Adresse e-mail', autocomplete: 'username' });
+  const pass = h('input', { type: 'password', placeholder: 'Mot de passe', autocomplete: 'current-password' });
+  const show = h('button', { class: 'ghost small', type: 'button', onclick: () => { pass.type = pass.type === 'password' ? 'text' : 'password'; show.textContent = pass.type === 'password' ? 'Voir' : 'Cacher'; } }, 'Voir');
+  const err = h('div', { class: 'err' }, msg || '');
+  const btn = h('button', { class: 'full', type: 'button' }, 'Se connecter');
+  async function go() {
+    err.textContent = ''; btn.disabled = true;
+    const { error } = await sb.auth.signInWithPassword({ email: email.value.trim(), password: pass.value });
+    btn.disabled = false;
+    if (error) { err.textContent = 'E-mail ou mot de passe incorrect.'; return; }
+    afterLogin();
+  }
+  btn.addEventListener('click', go);
+  pass.addEventListener('keydown', e => { if (e.key === 'Enter') go(); });
+  mount(h('div', { class: 'center' }, h('div', { class: 'box' },
+    logo(), h('h2', {}, 'Accès réservé'),
+    h('div', { class: 'muted' }, 'Console de l\'équipe OTAKU CHAT. Compte autorisé et double authentification obligatoires.'),
+    email, h('div', { class: 'row' }, h('div', { style: 'flex:1' }, pass), show), err, btn)));
+}
+
+// ---------- double authentification (TOTP) ----------
+async function afterLogin() {
+  try {
+    const { data: aal } = await sb.auth.mfa.getAuthenticatorAssuranceLevel();
+    if (aal && aal.currentLevel === 'aal2') return enterApp();
+    const { data: fs, error } = await sb.auth.mfa.listFactors();
+    if (error) throw error;
+    const verified = (fs.totp || []).find(f => f.status === 'verified');
+    if (verified) { state.factorId = verified.id; return mfaVerifyView(); }
+    for (const f of (fs.all || []).filter(f => f.status === 'unverified')) await sb.auth.mfa.unenroll({ factorId: f.id });
+    const { data, error: e2 } = await sb.auth.mfa.enroll({ factorType: 'totp', friendlyName: 'OTAKU CONTROL ' + Date.now() });
+    if (e2) throw e2;
+    state.factorId = data.id;
+    mfaEnrollView(data.totp.qr_code, data.totp.secret);
+  } catch (e) {
+    loginView('Erreur : ' + (e.message || e));
+  }
+}
+async function verifyCode(code, errBox) {
+  errBox.textContent = '';
+  const { data: ch, error: e1 } = await sb.auth.mfa.challenge({ factorId: state.factorId });
+  if (e1) { errBox.textContent = e1.message; return; }
+  const { error: e2 } = await sb.auth.mfa.verify({ factorId: state.factorId, challengeId: ch.id, code: code.replace(/\s/g, '') });
+  if (e2) { errBox.textContent = 'Code incorrect ou expiré.'; return; }
+  enterApp();
+}
+function codeBox(onSubmit) {
+  const code = h('input', { inputmode: 'numeric', maxlength: '8', placeholder: 'Code à 6 chiffres', autocomplete: 'one-time-code' });
+  const err = h('div', { class: 'err' });
+  const btn = h('button', { class: 'full', type: 'button', onclick: () => onSubmit(code.value, err) }, 'Valider');
+  code.addEventListener('keydown', e => { if (e.key === 'Enter') onSubmit(code.value, err); });
+  return [code, err, btn];
+}
+function mfaVerifyView() {
+  mount(h('div', { class: 'center' }, h('div', { class: 'box' }, logo(), h('h2', {}, 'Double authentification'),
+    h('div', { class: 'muted' }, 'Entre le code affiché par ton application d\'authentification.'), ...codeBox(verifyCode),
+    h('button', { class: 'ghost full', onclick: async () => { await sb.auth.signOut(); loginView(); } }, 'Annuler'))));
+}
+function mfaEnrollView(qr, secret) {
+  mount(h('div', { class: 'center' }, h('div', { class: 'box' }, logo(), h('h2', {}, 'Active la double authentification'),
+    h('div', { class: 'muted' }, 'Scanne ce code avec une application d\'authentification (Google Authenticator, Aegis, Authy…), puis entre le code à 6 chiffres.'),
+    h('img', { class: 'qr', src: qr, alt: 'QR code' }),
+    h('div', { class: 'muted' }, 'Ou saisis la clé à la main : ', h('code', {}, secret)), ...codeBox(verifyCode))));
+}
+
+// ---------- application ----------
+let stats = null;
+async function enterApp() {
+  resetIdle();
+  try {
+    stats = await rpc('admin_stats');
+  } catch (e) {
+    await sb.auth.signOut();
+    return loginView('Accès refusé : ce compte n\'est pas autorisé.');
+  }
+  state.role = stats.my_role;
+  shell();
+}
+function shell() {
+  const tabs = [['dash', 'Tableau de bord'], ['reports', 'Signalements'], ['users', 'Utilisateurs']];
+  if (state.role === 'owner' || state.role === 'super_admin') tabs.push(['audit', 'Journal']);
+  const content = h('main', {});
+  const nav = h('nav', {});
+  function select(t) {
+    state.tab = t;
+    nav.replaceChildren(...tabs.map(([k, l]) => h('button', { class: k === t ? 'on' : '', onclick: () => select(k) }, l)));
+    ({ dash: renderDash, reports: renderReports, users: renderUsers, audit: renderAudit })[t](content);
+  }
+  mount(h('header', {}, logo(), h('span', { class: 'badge' }, String(state.role || '').toUpperCase()), h('div', { class: 'sp' }),
+    h('button', { class: 'ghost small', onclick: async () => { await sb.auth.signOut(); location.reload(); } }, 'Déconnexion')), nav, content);
+  select(state.tab);
+}
+function loading(el) { el.replaceChildren(h('div', { class: 'muted', style: 'padding:20px' }, 'Chargement…')); }
+function failure(el, e) { el.replaceChildren(h('div', { class: 'err', style: 'padding:20px' }, 'Erreur : ' + (e.message || e))); }
+
+async function renderDash(el) {
+  loading(el);
+  try {
+    const s = await rpc('admin_stats'); stats = s;
+    const box = (n, l) => h('div', { class: 'stat' }, h('div', { class: 'n' }, n), h('div', { class: 'l' }, l));
+    el.replaceChildren(h('h2', { style: 'margin:8px 0 12px' }, 'Tableau de bord'), h('div', { class: 'grid' },
+      box(s.users, 'Utilisateurs'), box(s.new_users_7d, 'Nouveaux (7 jours)'), box(s.active, 'Actifs'),
+      box(s.suspended, 'Suspendus'), box(s.banned, 'Bannis'), box(s.posts, 'Publications'),
+      box(s.comments, 'Commentaires'), box(s.conversations, 'Discussions'), box(s.messages, 'Messages (total)'),
+      box(s.reports_open, 'Signalements à traiter')),
+      h('p', { class: 'muted' }, 'Les messages privés ne sont pas lisibles ici : seuls les messages signalés apparaissent, sous forme de copie.'));
+  } catch (e) { failure(el, e); }
+}
+
+async function renderReports(el) {
+  loading(el);
+  state.rf = state.rf || 'open';
+  const filter = h('select', {}, h('option', { value: 'open' }, 'À traiter'), h('option', { value: 'resolved' }, 'Résolus'), h('option', { value: 'dismissed' }, 'Sans suite'), h('option', { value: 'all' }, 'Tous'));
+  filter.value = state.rf;
+  filter.addEventListener('change', () => { state.rf = filter.value; renderReports(el); });
+  try {
+    const rows = await rpc('admin_reports', { p_status: state.rf, lim: 50 });
+    el.replaceChildren(h('div', { class: 'row sp' }, h('h2', {}, 'Signalements'), h('div', { style: 'min-width:180px' }, filter)),
+      ...(rows.length ? rows.map(r => reportCard(r, el)) : [h('p', { class: 'muted' }, 'Aucun signalement.')]));
+  } catch (e) { failure(el, e); }
+}
+function reportCard(r, el) {
+  const snap = r.snapshot || {};
+  const kind = snap.post_id ? 'Publication' : (snap.message_id ? 'Message' : 'Utilisateur');
+  async function act(fn, ok) {
+    try { await fn(); renderReports(el); } catch (e) { alert('Erreur : ' + (e.message || e)); }
+  }
+  const btns = [];
+  if (r.status === 'open') btns.push(h('button', { class: 'ghost small', onclick: () => act(() => rpc('staff_resolve_report', { rid: r.id, new_status: 'reviewing', note: '' })) }, 'Prendre en charge'));
+  if (r.status === 'open' || r.status === 'reviewing') {
+    btns.push(h('button', { class: 'small', onclick: () => { const n = prompt('Note (facultatif) :') || ''; act(() => rpc('staff_resolve_report', { rid: r.id, new_status: 'resolved', note: n })); } }, 'Résolu'));
+    btns.push(h('button', { class: 'ghost small', onclick: () => { const n = prompt('Pourquoi sans suite ? (facultatif)') || ''; act(() => rpc('staff_resolve_report', { rid: r.id, new_status: 'dismissed', note: n })); } }, 'Sans suite'));
+  }
+  if (snap.post_id) btns.push(h('button', { class: 'bad small', onclick: () => { if (!confirm('Supprimer cette publication ?')) return; const w = prompt('Motif :') || 'signalement'; act(() => rpc('staff_delete_post', { pid: snap.post_id, why: w })); } }, 'Supprimer la publication'));
+  if (r.target_id && r.target_status === 'active') btns.push(h('button', { class: 'bad small', onclick: () => { if (!confirm('Suspendre cet utilisateur ?')) return; const w = prompt('Motif :') || 'signalement'; act(() => rpc('staff_set_status', { uid: r.target_id, new_status: 'suspended', why: w })); } }, 'Suspendre l\'auteur'));
+  const content = snap.body ? h('div', { class: 'quote' }, snap.body) : null;
+  const img = snap.image_url ? h('div', { class: 'muted' }, 'Image jointe : ', h('a', { href: snap.image_url, target: '_blank', rel: 'noopener noreferrer', style: 'color:#ff8ae0' }, 'ouvrir dans un nouvel onglet')) : null;
+  return h('div', { class: 'card' },
+    h('div', { class: 'row sp' }, h('div', { class: 'row' }, tag(r.status), h('span', { class: 'tag' }, kind), h('span', { class: 'tag' }, REASONS[r.reason] || r.reason)), h('span', { class: 'muted' }, fmt(r.created_at))),
+    h('div', { class: 'muted', style: 'margin-top:8px' }, 'Signalé par ', h('b', {}, '@' + (r.reporter_username || '?')), ' · Visé : ', h('b', {}, '@' + (r.target_username || '?')), ' ', r.target_status ? tag(r.target_status) : null),
+    r.details ? h('div', { class: 'muted' }, 'Détails : ' + r.details) : null,
+    content, img, h('div', { class: 'row', style: 'margin-top:10px' }, btns));
+}
+
+async function renderUsers(el) {
+  const q = h('input', { placeholder: 'Chercher un pseudo, un nom ou une adresse e-mail (si admin)' });
+  const list = h('div', {});
+  async function load() {
+    list.replaceChildren(h('div', { class: 'muted', style: 'padding:14px' }, 'Chargement…'));
+    try {
+      const rows = await rpc('admin_users', { q: q.value.trim(), lim: 40 });
+      const isOwner = state.role === 'owner';
+      list.replaceChildren(h('div', { class: 'tablewrap' }, h('table', {},
+        h('thead', {}, h('tr', {}, ['Pseudo', 'Nom', 'Rôle', 'Statut', 'E-mail', 'Inscrit', 'Actions'].map(t => h('th', {}, t)))),
+        h('tbody', {}, rows.map(u => h('tr', {},
+          h('td', {}, '@' + u.username), h('td', {}, u.display_name || ''), h('td', {}, u.role), h('td', {}, tag(u.status)),
+          h('td', {}, u.email || '—'), h('td', {}, fmt(u.created_at)),
+          h('td', {}, h('div', { class: 'row' },
+            u.status !== 'active' ? h('button', { class: 'small', onclick: () => setStatus(u, 'active') }, 'Réactiver') : null,
+            u.status === 'active' ? h('button', { class: 'bad small', onclick: () => setStatus(u, 'suspended') }, 'Suspendre') : null,
+            u.status !== 'banned' ? h('button', { class: 'bad small', onclick: () => setStatus(u, 'banned') }, 'Bannir') : null,
+            isOwner ? roleSelect(u) : null))))))));
+    } catch (e) { list.replaceChildren(h('div', { class: 'err', style: 'padding:14px' }, 'Erreur : ' + (e.message || e))); }
+  }
+  async function setStatus(u, status) {
+    if (!confirm('Passer @' + u.username + ' en « ' + (STATUS_FR[status] || status) + ' » ?')) return;
+    const why = prompt('Motif (facultatif) :') || '';
+    try { await rpc('staff_set_status', { uid: u.id, new_status: status, why }); load(); } catch (e) { alert('Erreur : ' + (e.message || e)); }
+  }
+  function roleSelect(u) {
+    const s = h('select', { style: 'margin:0;padding:6px;width:auto' }, ['user', 'moderator', 'super_admin', 'owner'].map(r => h('option', { value: r }, r)));
+    s.value = u.role;
+    s.addEventListener('change', async () => {
+      if (!confirm('Changer le rôle de @' + u.username + ' en « ' + s.value + ' » ?')) { s.value = u.role; return; }
+      try { await rpc('owner_set_role', { uid: u.id, new_role: s.value }); load(); } catch (e) { alert('Erreur : ' + (e.message || e)); s.value = u.role; }
+    });
+    return s;
+  }
+  q.addEventListener('keydown', e => { if (e.key === 'Enter') load(); });
+  el.replaceChildren(h('h2', { style: 'margin:8px 0' }, 'Utilisateurs'), q, h('div', { style: 'height:12px' }), list);
+  load();
+}
+
+async function renderAudit(el) {
+  loading(el);
+  try {
+    const rows = await rpc('admin_audit', { lim: 100 });
+    el.replaceChildren(h('h2', { style: 'margin:8px 0 12px' }, 'Journal d\'audit'),
+      h('p', { class: 'muted' }, 'Journal en ajout seul : aucune ligne ne peut être modifiée ni supprimée.'),
+      h('div', { class: 'tablewrap' }, h('table', {},
+        h('thead', {}, h('tr', {}, ['Date', 'Acteur', 'Action', 'Cible', 'Détails'].map(t => h('th', {}, t)))),
+        h('tbody', {}, rows.map(a => h('tr', {}, h('td', {}, fmt(a.at)), h('td', {}, a.actor_username ? '@' + a.actor_username : '—'),
+          h('td', {}, a.action), h('td', {}, (a.target_type || '') + ' ' + (a.target_id || '').slice(0, 8)),
+          h('td', {}, h('code', {}, JSON.stringify(a.details || {})))))))));
+  } catch (e) { failure(el, e); }
+}
+
+// ---------- démarrage ----------
+(async function boot() {
+  const { data } = await sb.auth.getSession();
+  if (data && data.session) afterLogin(); else loginView();
+})();
+</script>
+</body>
+</html>
