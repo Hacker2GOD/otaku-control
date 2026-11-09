@@ -222,7 +222,7 @@ async function renderReports(el) {
 }
 function reportCard(r, el) {
   const snap = r.snapshot || {};
-  const kind = snap.post_id ? 'Publication' : (snap.message_id ? 'Message' : 'Utilisateur');
+  const kind = snap.post_id ? 'Publication' : (snap.message_id ? (snap.kind === 'voice' ? 'Message vocal' : (snap.kind === 'image' ? 'Photo' : 'Message')) : 'Utilisateur');
   async function act(fn, ok) {
     try { await fn(); renderReports(el); } catch (e) { alert('Erreur : ' + (e.message || e)); }
   }
@@ -235,12 +235,23 @@ function reportCard(r, el) {
   if (snap.post_id) btns.push(h('button', { class: 'bad small', onclick: () => { if (!confirm('Supprimer cette publication ?')) return; const w = prompt('Motif :') || 'signalement'; act(() => rpc('staff_delete_post', { pid: snap.post_id, why: w })); } }, 'Supprimer la publication'));
   if (r.target_id && r.target_status === 'active') btns.push(h('button', { class: 'bad small', onclick: () => { if (!confirm('Suspendre cet utilisateur ?')) return; const w = prompt('Motif :') || 'signalement'; act(() => rpc('staff_set_status', { uid: r.target_id, new_status: 'suspended', why: w })); } }, 'Suspendre l\'auteur'));
   const content = snap.body ? h('div', { class: 'quote' }, snap.body) : null;
+  let med = null;
+  if (snap.media_path) {
+    med = h('button', { class: 'ghost small', onclick: async () => {
+      const { data, error } = await sb.storage.from('chat-media').createSignedUrl(snap.media_path, 300);
+      if (error || !data) { alert('Impossible d\'ouvrir le média : ' + (error ? error.message : '')); return; }
+      window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
+    } }, 'Ouvrir le média signalé (lien 5 min)');
+  } else if (snap.media_url) {
+    med = h('div', { class: 'muted' }, (snap.media_type === 'video' ? 'Vidéo jointe : ' : 'Vocal joint : '),
+      h('a', { href: snap.media_url, target: '_blank', rel: 'noopener noreferrer', style: 'color:#ff8ae0' }, 'ouvrir dans un nouvel onglet'));
+  }
   const img = snap.image_url ? h('div', { class: 'muted' }, 'Image jointe : ', h('a', { href: snap.image_url, target: '_blank', rel: 'noopener noreferrer', style: 'color:#ff8ae0' }, 'ouvrir dans un nouvel onglet')) : null;
   return h('div', { class: 'card' },
     h('div', { class: 'row sp' }, h('div', { class: 'row' }, tag(r.status), h('span', { class: 'tag' }, kind), h('span', { class: 'tag' }, REASONS[r.reason] || r.reason)), h('span', { class: 'muted' }, fmt(r.created_at))),
     h('div', { class: 'muted', style: 'margin-top:8px' }, 'Signalé par ', h('b', {}, '@' + (r.reporter_username || '?')), ' · Visé : ', h('b', {}, '@' + (r.target_username || '?')), ' ', r.target_status ? tag(r.target_status) : null),
     r.details ? h('div', { class: 'muted' }, 'Détails : ' + r.details) : null,
-    content, img, h('div', { class: 'row', style: 'margin-top:10px' }, btns));
+    content, img, med, h('div', { class: 'row', style: 'margin-top:10px' }, btns));
 }
 
 async function renderUsers(el) {
