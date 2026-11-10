@@ -222,7 +222,7 @@ async function renderReports(el) {
 }
 function reportCard(r, el) {
   const snap = r.snapshot || {};
-  const kind = snap.post_id ? 'Publication' : (snap.message_id ? (snap.kind === 'voice' ? 'Message vocal' : (snap.kind === 'image' ? 'Photo' : 'Message')) : 'Utilisateur');
+  const kind = snap.post_id ? 'Publication' : (snap.message_id ? ({ voice: 'Message vocal', image: 'Photo', video: 'Vidéo', file: 'Fichier', contact: 'Contact' }[snap.kind] || 'Message') : 'Utilisateur');
   async function act(fn, ok) {
     try { await fn(); renderReports(el); } catch (e) { alert('Erreur : ' + (e.message || e)); }
   }
@@ -243,7 +243,7 @@ function reportCard(r, el) {
       window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
     } }, 'Ouvrir le média signalé (lien 5 min)');
   } else if (snap.media_url) {
-    med = h('div', { class: 'muted' }, (snap.media_type === 'video' ? 'Vidéo jointe : ' : 'Vocal joint : '),
+    med = h('div', { class: 'muted' }, ({ video: 'Vidéo jointe : ', file: 'Fichier joint : ', audio: 'Vocal joint : ' }[snap.media_type] || 'Média joint : '),
       h('a', { href: snap.media_url, target: '_blank', rel: 'noopener noreferrer', style: 'color:#ff8ae0' }, 'ouvrir dans un nouvel onglet'));
   }
   const img = snap.image_url ? h('div', { class: 'muted' }, 'Image jointe : ', h('a', { href: snap.image_url, target: '_blank', rel: 'noopener noreferrer', style: 'color:#ff8ae0' }, 'ouvrir dans un nouvel onglet')) : null;
